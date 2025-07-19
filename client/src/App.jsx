@@ -40,10 +40,14 @@ export default function App() {
       let endpoint;
       if (searchQuery.trim()) {
         setMovies([]);
-        endpoint = `${API_BASE_URL}/search/movie?query=${encodeURIComponent(searchQuery)}&include_adult=false&language=en-US&page=1&&with_original_language=te&&sort_by=popularity.desc`;
+        // Search endpoint for user queries - TMDB search API automatically sorts by relevance
+        endpoint = `${API_BASE_URL}/search/movie?query=${encodeURIComponent(searchQuery)}&include_adult=false&language=en-US&page=1&region=IN`;
+        
+        // After getting search results, we'll filter and sort them for Telugu movies
       } else {
         setMovies([]);
-        endpoint = `${API_BASE_URL}/discover/movie?include_adult=false&include_video=false&language=en-US&page=1&sort_by=popularity.desc&with_original_language=te`;
+        // Discover endpoint for popular Telugu movies
+        endpoint = `${API_BASE_URL}/discover/movie?include_adult=false&include_video=false&language=en-US&page=1&sort_by=popularity.desc&with_original_language=te&region=IN`;
       }
 
       if (!API_OPTIONS) {
@@ -61,7 +65,34 @@ export default function App() {
         setMovies([]);
         return;
       }
-      setMovies(data.results);
+      
+      let filteredMovies = data.results;
+      
+      // If it's a search query, filter for Telugu movies and sort by relevance, rating, and popularity
+      if (searchQuery.trim()) {
+        filteredMovies = data.results
+          .filter(movie => {
+            // Filter for Telugu movies (check original language or if Telugu is mentioned)
+            return movie.original_language === 'te' || 
+                   movie.title?.toLowerCase().includes('telugu') ||
+                   movie.overview?.toLowerCase().includes('telugu');
+          })
+          .sort((a, b) => {
+            // Sort by multiple criteria:
+            // 1. Vote average (rating) - higher is better
+            const ratingDiff = (b.vote_average || 0) - (a.vote_average || 0);
+            if (Math.abs(ratingDiff) > 0.5) return ratingDiff;
+            
+            // 2. Popularity - higher is better
+            const popularityDiff = (b.popularity || 0) - (a.popularity || 0);
+            if (Math.abs(popularityDiff) > 10) return popularityDiff;
+            
+            // 3. Vote count - more votes indicate more relevance
+            return (b.vote_count || 0) - (a.vote_count || 0);
+          });
+      }
+      
+      setMovies(filteredMovies);
       setErrorMessage("");
     } catch (error) {
       console.error('Error fetching movies:', error);
@@ -85,7 +116,6 @@ export default function App() {
 
   return (
     <main>
-      
       <img src="./hero.png" alt="" />
       <div className='wrapper'>
         <header>

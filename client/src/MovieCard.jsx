@@ -1,11 +1,11 @@
 import React from 'react'
-import NoPoster from '../public/No-Poster.png'
+
 export default function MovieCard({movie}) {
     
     return (
     <div className='movie-card'>
         <img
-            src={movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : NoPoster}
+            src={movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : "/No-Poster.png"}
             alt={movie.title || "No Poster"}
         />
 react        <div className='mt-4'>
