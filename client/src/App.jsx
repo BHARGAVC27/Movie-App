@@ -10,6 +10,13 @@ import { getTrendingMovies, updateSearchCount } from "./appwrite.js";
 const API_BASE_URL = "https://api.themoviedb.org/3";
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 
+// Debug environment variables
+console.log("Environment Variables Debug:");
+console.log("API_KEY exists:", !!API_KEY);
+console.log("APPWRITE_PROJECT_ID:", import.meta.env.VITE_APPWRITE_PROJECT_ID);
+console.log("APPWRITE_DATABASE_ID:", import.meta.env.VITE_APPWRITE_DATABASE_ID);
+console.log("APPWRITE_COLLECTION_ID:", import.meta.env.VITE_APPWRITE_COLLECTION_ID);
+
 let API_OPTIONS = null;
 if (API_KEY) {
   API_OPTIONS = {
@@ -19,10 +26,17 @@ if (API_KEY) {
       Authorization: `Bearer ${API_KEY}`,
     },
   };
+} else {
+  console.error("❌ TMDB API key is missing!");
 }
 
 const client = new Client();
-client.setProject(import.meta.env.VITE_APPWRITE_PROJECT_ID);
+try {
+  client.setProject(import.meta.env.VITE_APPWRITE_PROJECT_ID);
+  console.log("✅ Appwrite client initialized successfully");
+} catch (error) {
+  console.error("❌ Appwrite client initialization failed:", error);
+}
 
 export default function App() {
   const [search, setSearch] = React.useState("");
@@ -102,21 +116,35 @@ export default function App() {
 
   const fetchTrendingMovies = async () => {
     try {
+      console.log("🔄 Fetching trending movies...");
       const movies = await getTrendingMovies();
-      setTrendingMovies(movies);
-      console.log("Trending Movies:", movies);
+      console.log("✅ Trending movies fetched:", movies);
+      setTrendingMovies(movies || []);
     } catch (error) {
-      console.error("Error fetching trending movies:", error);
+      console.error("❌ Error fetching trending movies:", error);
+      setTrendingMovies([]); // Set empty array on error
     }
   }
+
   useEffect(() => {
-    fetchMovies();
-    fetchTrendingMovies();
+    console.log("🚀 App mounted, initializing...");
+    try {
+      fetchMovies();
+      fetchTrendingMovies();
+    } catch (error) {
+      console.error("❌ Error in useEffect:", error);
+      setLoading(false);
+      setErrorMessage("Failed to initialize app. Please refresh the page.");
+    }
   }, []);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      fetchMovies(search);
+      try {
+        fetchMovies(search);
+      } catch (error) {
+        console.error("❌ Error in search effect:", error);
+      }
     }, 1000);
 
     return () => clearTimeout(timeoutId);
@@ -133,14 +161,26 @@ export default function App() {
           <Search search={search} setSearch={setSearch} />
         </header>
 
+        {/* Debug info for deployment */}
+        {process.env.NODE_ENV === 'development' && (
+          <div style={{ color: 'white', padding: '10px', background: 'rgba(0,0,0,0.5)', margin: '10px 0' }}>
+            <p>Debug Info:</p>
+            <p>API Key: {API_KEY ? 'Present' : 'Missing'}</p>
+            <p>Trending Movies Count: {trendingMovies.length}</p>
+            <p>Movies Count: {movies.length}</p>
+            <p>Loading: {loading.toString()}</p>
+            <p>Error: {errorMessage || 'None'}</p>
+          </div>
+        )}
+
         {
           trendingMovies.length > 0 && (
             <section className="trending">
-              <h2 className="pb-10">Trending Movies</h2>
+              <h2>Trending Movies</h2>
               <ul>
                {trendingMovies.map((movie,index) => {
                  return (
-                   <li key={movie.$id}>
+                   <li key={movie.$id || index}>
                       <p>{index+1}</p>
                       <img src={movie.poster_url || "/No-Poster.png"} alt={movie.searchTerm} loading="lazy" />
                    </li>
@@ -158,7 +198,7 @@ export default function App() {
               style={{
                 display: "flex",
                 justifyContent: "center",
-                height: "100vh",
+                height: "50vh",
               }}
             >
               <Lottie
@@ -168,7 +208,27 @@ export default function App() {
               />
             </div>
           ) : errorMessage ? (
-            <p className="text-red-500">{errorMessage}</p>
+            <div style={{ color: 'red', padding: '20px', textAlign: 'center' }}>
+              <p>{errorMessage}</p>
+              <button 
+                onClick={() => window.location.reload()} 
+                style={{ 
+                  padding: '10px 20px', 
+                  marginTop: '10px', 
+                  backgroundColor: '#4190FF', 
+                  color: 'white', 
+                  border: 'none', 
+                  borderRadius: '5px',
+                  cursor: 'pointer'
+                }}
+              >
+                Reload Page
+              </button>
+            </div>
+          ) : movies.length === 0 ? (
+            <div style={{ color: 'white', textAlign: 'center', padding: '20px' }}>
+              <p>No movies found. Try searching for something else.</p>
+            </div>
           ) : (
             <ul>
               {movies.map((movie) => {
