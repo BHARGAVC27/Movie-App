@@ -1,25 +1,25 @@
-import React from 'react'
-import Search from './Search.jsx';
-import { useEffect, useState } from 'react'
-import MovieCard from './MovieCard.jsx';
+import React from "react";
+import Search from "./Search.jsx";
+import { useEffect, useState } from "react";
+import MovieCard from "./MovieCard.jsx";
 import Lottie from "lottie-react";
-import loadingAnimation from './loading.json';
-import { Client } from 'appwrite';
+import loadingAnimation from "./loading.json";
+import { Client } from "appwrite";
+import { getTrendingMovies, updateSearchCount } from "./appwrite.js";
 
-const API_BASE_URL = 'https://api.themoviedb.org/3';
+const API_BASE_URL = "https://api.themoviedb.org/3";
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 
 let API_OPTIONS = null;
 if (API_KEY) {
   API_OPTIONS = {
-    method: 'GET',
+    method: "GET",
     headers: {
-      accept: 'application/json',
+      accept: "application/json",
       Authorization: `Bearer ${API_KEY}`,
-    }
-  }
+    },
+  };
 }
-
 
 const client = new Client();
 client.setProject(import.meta.env.VITE_APPWRITE_PROJECT_ID);
@@ -29,9 +29,8 @@ export default function App() {
   const [movies, setMovies] = React.useState([]);
   const [errorMessage, setErrorMessage] = React.useState("");
   const [loading, setLoading] = React.useState(true);
-
-
-
+  const [trendingMovies, setTrendingMovies] = React.useState([]);
+ 
   const fetchMovies = async (searchQuery = "") => {
     setLoading(true);
     setErrorMessage("");
@@ -40,24 +39,24 @@ export default function App() {
       let endpoint;
       if (searchQuery.trim()) {
         setMovies([]);
-        // Search endpoint for user queries - TMDB search API automatically sorts by relevance
-        endpoint = `${API_BASE_URL}/search/movie?query=${encodeURIComponent(searchQuery)}&include_adult=false&language=en-US&page=1&region=IN`;
-        
-        // After getting search results, we'll filter and sort them for Telugu movies
+        endpoint = `${API_BASE_URL}/search/movie?query=${encodeURIComponent(
+          searchQuery
+        )}&include_adult=false&language=en-US&page=1&region=IN`;
       } else {
         setMovies([]);
-        // Discover endpoint for popular Telugu movies
         endpoint = `${API_BASE_URL}/discover/movie?include_adult=false&include_video=false&language=en-US&page=1&sort_by=popularity.desc&with_original_language=te&region=IN`;
       }
 
       if (!API_OPTIONS) {
-        setErrorMessage('API key is not configured. Please add your TMDB API key to the .env file.');
+        setErrorMessage(
+          "API key is not configured. Please add your TMDB API key to the .env file."
+        );
         return;
       }
 
       const response = await fetch(endpoint, API_OPTIONS);
       if (!response.ok) {
-        throw new Error('Network response was not ok');
+        throw new Error("Network response was not ok");
       }
       const data = await response.json();
       if (data.Response === "False") {
@@ -65,51 +64,60 @@ export default function App() {
         setMovies([]);
         return;
       }
-      
+
       let filteredMovies = data.results;
-      
-      // If it's a search query, filter for Telugu movies and sort by relevance, rating, and popularity
+
       if (searchQuery.trim()) {
         filteredMovies = data.results
-          .filter(movie => {
-            // Filter for Telugu movies (check original language or if Telugu is mentioned)
-            return movie.original_language === 'te' || 
-                   movie.title?.toLowerCase().includes('telugu') ||
-                   movie.overview?.toLowerCase().includes('telugu');
+          .filter((movie) => {
+            return (
+              movie.original_language === "te" ||
+              movie.title?.toLowerCase().includes("telugu") ||
+              movie.overview?.toLowerCase().includes("telugu")
+            );
           })
           .sort((a, b) => {
-            // Sort by multiple criteria:
-            // 1. Vote average (rating) - higher is better
             const ratingDiff = (b.vote_average || 0) - (a.vote_average || 0);
             if (Math.abs(ratingDiff) > 0.5) return ratingDiff;
-            
-            // 2. Popularity - higher is better
+
             const popularityDiff = (b.popularity || 0) - (a.popularity || 0);
             if (Math.abs(popularityDiff) > 10) return popularityDiff;
-            
-            // 3. Vote count - more votes indicate more relevance
+
             return (b.vote_count || 0) - (a.vote_count || 0);
           });
       }
-      
       setMovies(filteredMovies);
       setErrorMessage("");
+
+      if (searchQuery.trim() && filteredMovies.length > 0) {
+        await updateSearchCount(searchQuery, filteredMovies[0]);
+      }
     } catch (error) {
-      console.error('Error fetching movies:', error);
-      setErrorMessage('Failed to fetch movies. Please try again later.');
+      console.error("Error fetching movies:", error);
+      setErrorMessage("Failed to fetch movies. Please try again later.");
     } finally {
       setLoading(false);
     }
-  }
+  };
 
+  const fetchTrendingMovies = async () => {
+    try {
+      const movies = await getTrendingMovies();
+      setTrendingMovies(movies);
+      console.log("Trending Movies:", movies);
+    } catch (error) {
+      console.error("Error fetching trending movies:", error);
+    }
+  }
   useEffect(() => {
     fetchMovies();
+    fetchTrendingMovies();
   }, []);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       fetchMovies(search);
-    }, 500); // Debounce search by 500ms
+    }, 1000);
 
     return () => clearTimeout(timeoutId);
   }, [search]);
@@ -117,20 +125,42 @@ export default function App() {
   return (
     <main>
       <img src="./hero.png" alt="" />
-      <div className='wrapper'>
+      <div className="wrapper">
         <header>
-          <h1>Find <span className='text-gradient'>Movies</span> you love to watch</h1>
+          <h1>
+            Find <span className="text-gradient">Movies</span> you love to watch <br /> <span className="tfi-gradient">TFI Edition</span>
+          </h1>
           <Search search={search} setSearch={setSearch} />
         </header>
 
-        <section className='all-movies'>
-          <h2>All Movies </h2>
+        {
+          trendingMovies.length > 0 && (
+            <section className="trending">
+              <h2 className="pb-10">Trending Movies</h2>
+              <ul>
+               {trendingMovies.map((movie,index) => {
+                 return (
+                   <li key={movie.$id}>
+                      <p>{index+1}</p>
+                      <img src={movie.poster_url || "/No-Poster.png"} alt={movie.searchTerm} loading="lazy" />
+                   </li>
+                 );
+               })}
+              </ul>
+            </section>
+          )
+        }
+
+        <section className="all-movies">
+          <h2>Popular Movies </h2>
           {loading ? (
-            <div style={{
-              display: "flex",
-              justifyContent: "center",
-              height: "100vh"
-            }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                height: "100vh",
+              }}
+            >
               <Lottie
                 animationData={loadingAnimation}
                 loop
@@ -138,16 +168,16 @@ export default function App() {
               />
             </div>
           ) : errorMessage ? (
-            <p className='text-red-500'>{errorMessage}</p>
+            <p className="text-red-500">{errorMessage}</p>
           ) : (
             <ul>
               {movies.map((movie) => {
-                return <MovieCard key={movie.id} movie={movie} />
+                return <MovieCard key={movie.id} movie={movie} />;
               })}
             </ul>
           )}
         </section>
       </div>
     </main>
-  )
+  );
 }
