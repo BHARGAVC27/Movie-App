@@ -288,11 +288,7 @@ We welcome contributions! Please follow these steps:
 - Test your changes thoroughly
 - Update documentation as needed
 
-## 🐛 Known Issues
 
-- Search results limited to movies with Telugu language tags
-- Poster images may take time to load on slower connections
-- Trending movies require Appwrite configuration
 
 ## 🔮 Future Enhancements
 
@@ -304,9 +300,6 @@ We welcome contributions! Please follow these steps:
 - [ ] Dark/Light theme toggle
 - [ ] PWA support
 
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 👨‍💻 Author
 
