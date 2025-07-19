@@ -10,12 +10,7 @@ import { getTrendingMovies, updateSearchCount } from "./appwrite.js";
 const API_BASE_URL = "https://api.themoviedb.org/3";
 const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 
-// Debug environment variables
-console.log("Environment Variables Debug:");
-console.log("API_KEY exists:", !!API_KEY);
-console.log("APPWRITE_PROJECT_ID:", import.meta.env.VITE_APPWRITE_PROJECT_ID);
-console.log("APPWRITE_DATABASE_ID:", import.meta.env.VITE_APPWRITE_DATABASE_ID);
-console.log("APPWRITE_COLLECTION_ID:", import.meta.env.VITE_APPWRITE_COLLECTION_ID);
+
 
 let API_OPTIONS = null;
 if (API_KEY) {
@@ -174,9 +169,9 @@ export default function App() {
         )}
 
         {
-          trendingMovies.length > 0 && (
+          trendingMovies.length > 0 && !search.trim() && (
             <section className="trending">
-              <h2>Trending Movies</h2>
+              <h2 className="pb-10">Trending Movies</h2>
               <ul>
                {trendingMovies.map((movie,index) => {
                  return (

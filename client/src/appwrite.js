@@ -26,6 +26,11 @@ const database = new Databases(client);
 
 export const updateSearchCount = async (searchTerm, movie) => {
     try {
+        if (!DATABASE_ID || !COLLECTION_ID || !PROJECT_ID) {
+            console.warn("⚠️ Appwrite not configured, skipping search count update");
+            return;
+        }
+
         const response = await database.listDocuments(DATABASE_ID, COLLECTION_ID,[
             Query.equal("searchTerm", searchTerm),
         ]);
@@ -43,18 +48,31 @@ export const updateSearchCount = async (searchTerm, movie) => {
             });
         }
     } catch (error) {
-        console.error("API Error:", error);
+        console.error("❌ Appwrite Error (updateSearchCount):", error);
+        if (error.message?.includes('CORS')) {
+            console.error("🚨 CORS Error: Please add your domain to Appwrite platform settings");
+        }
+        // Don't throw error, just log it so the app continues working
     }
 };
 
 export const getTrendingMovies = async () => {
     try {
+        if (!DATABASE_ID || !COLLECTION_ID || !PROJECT_ID) {
+            console.warn("⚠️ Appwrite not configured, returning empty trending movies");
+            return [];
+        }
+
         const result = await database.listDocuments(DATABASE_ID,COLLECTION_ID,[
             Query.limit(4),
             Query.orderDesc("count"),
         ])
-        return result.documents;
+        return result.documents || [];
     } catch (error) {
-        console.error("API Error:", error);
+        console.error("❌ Appwrite Error (getTrendingMovies):", error);
+        if (error.message?.includes('CORS')) {
+            console.error("🚨 CORS Error: Please add your domain to Appwrite platform settings");
+        }
+        return []; // Return empty array so app doesn't break
     }
 }
